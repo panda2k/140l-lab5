@@ -28,6 +28,7 @@ module top_level_5b(
   logic[5:0] LFSR_state[6];
   logic[5:0] match;					 // got a match for LFSR (one hot)
   logic[2:0] foundit;                // binary index equiv. of match
+  logic[4:0] pre_len = 0;
   int i;
 
 // instantiate submodules
@@ -123,7 +124,7 @@ per clock cycle.
 	0: begin 
            raddr     = 'd64;   // starting address for encrypted data to be loaded into device
 		   waddr     = 'd0;   // starting address for storing decrypted results into data mem
-           start = data_out ^ 6'h1F;
+           start = data_out ^ 6'h5F;
 	     end		       // no op
 	1: begin 
            load_LFSR = 'b1;	  // initialize the 6 LFSRs
@@ -148,16 +149,19 @@ per clock cycle.
 	default: begin	         // covers cycle_ct 4-71
 	       LFSR_en = 'b1;
            raddr = 'd64 + cycle_ct - 2; 
-           if(cycle_ct > 8) begin   // turn on write enable
+		   data_in = data_out ^ LFSR_state[foundit];
+           if (!pre_len && match && (data_in != 'h5F || cycle_ct == 13)) begin
+               pre_len = cycle_ct - 2;
+            end
+           if(pre_len) begin   // turn on write enable
 			 wr_en = 'b1;
-			 if(cycle_ct > 9)		 // advance memory write address pointer
-			   waddr = cycle_ct - 9;
+             waddr = cycle_ct - pre_len - 2;
+             $display("clk %d writing data to idx %d from idx %d: %d (%d)", cycle_ct, waddr, raddr, data_in, data_out);
 		   end
 		   else begin
 		     waddr = 'd0;
 			 wr_en = 'b0;
 		   end
-		   data_in = data_out ^ LFSR_state[foundit];
 	     end
   endcase
 end
