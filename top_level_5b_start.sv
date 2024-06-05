@@ -32,22 +32,53 @@ module top_level_5b(
 
 // instantiate submodules
 // data memory -- fill in the connections
-  dat_mem dm1(.clk(),.write_en(),.raddr(),.waddr(),
-       .data_in(),.data_out());                   // instantiate data memory
+  dat_mem dm1(.clk, .write_en(wr_en), .raddr, .waddr,
+       .data_in, .data_out);                   // instantiate data memory
 
 // 6 parallel LFSRs -- fill in the missing connections
-  lfsr6b l0(.clk() , 
-         .en   ()  ,            // 1: advance LFSR on rising clk
-         .init (),	            // 1: initialize LFSR
-         .taps (6'h21)     ,    // tap pattern 0
-         .start() ,	            // starting state for LFSR
-         .state(LFSR_state[0]));		   // LFSR state = LFSR output 
-
-  lfsr6b l1(... .taps(6'h2D),   .state(LFSR_state[1])
 /* fill in the guts: continue with other 5 lfsr6b
 */
+lfsr6b l0(.clk, 
+     .en(LFSR_en),            // 1: advance LFSR on rising clk
+     .init(load_LFSR),	            // 1: initialize LFSR
+     .taps (6'h21)     ,    // tap pattern 0
+     .start,	            // starting state for LFSR
+     .state(LFSR_state[0]));		   // LFSR state = LFSR output 
 
+lfsr6b l1(.clk, 
+     .en(LFSR_en),            // 1: advance LFSR on rising clk
+     .init(load_LFSR),	            // 1: initialize LFSR
+     .taps (6'h2D)     ,    // tap pattern 0
+     .start,	            // starting state for LFSR
+     .state(LFSR_state[1]));		   // LFSR state = LFSR output 
 
+lfsr6b l2(.clk, 
+     .en(LFSR_en),            // 1: advance LFSR on rising clk
+     .init(load_LFSR),	            // 1: initialize LFSR
+     .taps (6'h30)     ,    // tap pattern 0
+     .start,	            // starting state for LFSR
+     .state(LFSR_state[2]));		   // LFSR state = LFSR output 
+
+lfsr6b l3(.clk, 
+     .en(LFSR_en),            // 1: advance LFSR on rising clk
+     .init(load_LFSR),	            // 1: initialize LFSR
+     .taps (6'h33)     ,    // tap pattern 0
+     .start,	            // starting state for LFSR
+     .state(LFSR_state[3]));		   // LFSR state = LFSR output 
+
+lfsr6b l4(.clk, 
+     .en(LFSR_en),            // 1: advance LFSR on rising clk
+     .init(load_LFSR),	            // 1: initialize LFSR
+     .taps (6'h36)     ,    // tap pattern 0
+     .start,	            // starting state for LFSR
+     .state(LFSR_state[4]));		   // LFSR state = LFSR output 
+
+lfsr6b l5(.clk, 
+     .en(LFSR_en),            // 1: advance LFSR on rising clk
+     .init(load_LFSR),	            // 1: initialize LFSR
+     .taps (6'h39)     ,    // tap pattern 0
+     .start,	            // starting state for LFSR
+     .state(LFSR_state[5]));		   // LFSR state = LFSR output 
 /* We need to advance the LFSR(s) once per clock cycle. 
 Same with raddr, waddr, since we can physically do one memory read and/or write
 per clock cycle. 
@@ -57,6 +88,11 @@ per clock cycle.
 // acts like a priority encoder from MSB to LSB 
   always_comb case(match)
     6'b10_0000: foundit = 'd5;	    // because bit [5] was set
+    6'b01_0000: foundit = 'd4;	    // because bit [5] was set
+    6'b00_1000: foundit = 'd3;	    // because bit [5] was set
+    6'b00_0100: foundit = 'd2;	    // because bit [5] was set
+    6'b00_0010: foundit = 'd1;	    // because bit [5] was set
+    6'b00_0001: foundit = 'd0;	    // because bit [5] was set
     // fill in the guts
 	default: foundit = 0;           // covers bit[0] match and no match cases
   endcase
@@ -70,9 +106,9 @@ per clock cycle.
 	end
     else begin
       cycle_ct <= cycle_ct + 1;
-	  if(cycle_ct== ) begin			// last symbol of preamble
+	  if(cycle_ct == 8) begin			// last symbol of preamble
 	    for(i=0; i<6; i++) begin
-	      match[i] <= ;				// which LFSR state conforms to our test bench LFSR? 
+	      match[i] <= (data_out ^ 'h5f) == LFSR_state[i];				// which LFSR state conforms to our test bench LFSR? 
 		end
       end
     end
@@ -85,42 +121,43 @@ per clock cycle.
 	wr_en     = 'b0;
   case(cycle_ct)
 	0: begin 
-           raddr     = ;   // starting address for encrypted data to be loaded into device
-		   waddr     = ;   // starting address for storing decrypted results into data mem
+           raddr     = 'd64;   // starting address for encrypted data to be loaded into device
+		   waddr     = 'd0;   // starting address for storing decrypted results into data mem
+           start = data_out ^ 6'h1F;
 	     end		       // no op
 	1: begin 
-           load_LFSR = ;	  // initialize the 6 LFSRs
-           raddr     = ;
-		   waddr     = ;
+           load_LFSR = 'b1;	  // initialize the 6 LFSRs
+           raddr     = 'd64;
+		   waddr     = 'd0;
 	     end		       // no op
 	2  : begin				   
-           LFSR_en   = ;	   // advance the 6 LFSRs     
-           raddr     = ;
-		   waddr     = ;
+           LFSR_en   = 'b1;	   // advance the 6 LFSRs     
+           raddr     = 'd64;
+		   waddr     = 'd0;
          end
 	3  : begin			       // training seq.	-- run LFSRs & advance raddr
-	       LFSR_en = ;
-		   raddr     ;			  // advance raddr
-		   waddr = ;
+	       LFSR_en = 'b1;
+		   raddr = 'd65;			  // advance raddr
+		   waddr = 'd0;
 		 end
 	72  : begin
-            done = ;		// send acknowledge back to test bench to halt simulation
- 		    raddr =	;
- 		    waddr = ; 
+            done = 'b1;		// send acknowledge back to test bench to halt simulation
+ 		    raddr =	'd127;
+ 		    waddr = 'd63; 
 	     end
 	default: begin	         // covers cycle_ct 4-71
-	       LFSR_en = ;
-           raddr ; 
-           if(cycle_ct>) begin   // turn on write enable
-			 wr_en = ;
-			 if(cycle_ct>)		 // advance memory write address pointer
-			   waddr;
+	       LFSR_en = 'b1;
+           raddr = 'd64 + cycle_ct - 2; 
+           if(cycle_ct > 8) begin   // turn on write enable
+			 wr_en = 'b1;
+			 if(cycle_ct > 9)		 // advance memory write address pointer
+			   waddr = cycle_ct - 9;
 		   end
 		   else begin
-		     waddr = ;
-			 wr_en = ;
+		     waddr = 'd0;
+			 wr_en = 'b0;
 		   end
-//		   data_in = data_out^LFSR_state[foundit];
+		   data_in = data_out ^ LFSR_state[foundit];
 	     end
   endcase
 end
