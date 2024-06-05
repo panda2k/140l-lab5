@@ -112,6 +112,15 @@ per clock cycle.
 	      match[i] <= (data_out ^ 'h5f) == LFSR_state[i];				// which LFSR state conforms to our test bench LFSR? 
 		end
       end
+      //$display("clk %d reading from idx %d: %d (raw: %d decoded with %d)", cycle_ct, raddr, data_in, data_out, LFSR_state[foundit]);
+      
+      if (!pre_len && match && (data_in != 'h5F || cycle_ct == 14)) begin
+        //$display("data: %d", data_in);
+        // we lose the first letter by detecting the pre-length like this so manually write
+        // in the first bit when doing this
+        dm1.core[0] <= data_in;
+        pre_len <= cycle_ct - 2;
+      end
     end
   end  
 
@@ -149,14 +158,11 @@ per clock cycle.
 	default: begin	         // covers cycle_ct 4-71
 	       LFSR_en = 'b1;
            raddr = 'd64 + cycle_ct - 2; 
-		   data_in = data_out ^ LFSR_state[foundit];
-           if (!pre_len && match && (data_in != 'h5F || cycle_ct == 13)) begin
-               pre_len = cycle_ct - 2;
-            end
+           data_in = data_out ^ LFSR_state[foundit];
            if(pre_len) begin   // turn on write enable
 			 wr_en = 'b1;
              waddr = cycle_ct - pre_len - 2;
-             $display("clk %d writing data to idx %d from idx %d: %d (%d)", cycle_ct, waddr, raddr, data_in, data_out);
+             //$display("cycle %d: writing from %d to %d", cycle_ct, raddr, waddr);
 		   end
 		   else begin
 		     waddr = 'd0;
